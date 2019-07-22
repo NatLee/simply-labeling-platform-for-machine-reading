@@ -22,3 +22,38 @@ class MrcDatabase(object):
         with self.__conn.cursor() as cursor:
             cursor.execute(query, (question, answerStart, answerString, timestamp))
 
+    def commit(self):
+        self.__conn.commit()
+
+    ##
+    def getMaxArticleNumber(self):
+        query = 'SELECT count(*) FROM article'
+        with self.__conn.cursor() as cursor:
+            result = cursor.execute(query)
+        return result
+
+
+    def getArticleById(self, idx:int):
+        query = 'SELECT context FROM article WHERE idx = ?'
+        with self.__conn.cursor() as cursor:
+            result = cursor.execute(query,(idx,))
+        return result
+
+    def getAllArticle(self):
+        query = 'SELECT context FROM article'
+        with self.__conn.cursor() as cursor:
+            result = cursor.execute(query)
+        return result
+
+
+    def getQuestionAndAnswerById(self, idx:int):
+        query = 'SELECT question, answer_start, answer_string FROM article WHERE idx = ?'
+        with self.__conn.cursor() as cursor:
+            result = cursor.execute(query, (idx,))
+        return result
+
+    def getAllQuestionAndAnswer(self):
+        query = 'SELECT question, answer_start, answer_string FROM article'
+        with self.__conn.cursor() as cursor:
+            result = cursor.execute(query)
+        return result
