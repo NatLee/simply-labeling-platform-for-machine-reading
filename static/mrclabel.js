@@ -39,7 +39,6 @@ $(document).ready(function(){
         message = '' + passageSelectionStart + '-' + passageSelectionEnd
         $(msgTarget).empty()
         $(msgTarget).append(message)
-        console.log(msgTarget);
     });
 
     $('#sendBtn').click(function(e){
