@@ -12,7 +12,7 @@ class MrcDatabase(object):
     def __init__(self, sqlitePath:str):
 
         self.__timezone = datetime.timezone(datetime.timedelta(hours=8))
-        self.__conn = sqlite3.connect(sqlitePath)
+        self.__conn = sqlite3.connect(sqlitePath, check_same_thread = False)
         self.__maxArticleNumber = self.__getMaxArticleNumber()
         self.__maxQuestionAndAnswerNumber = self.__getMaxQuestionAndAnswerNumber()
 
@@ -50,14 +50,14 @@ class MrcDatabase(object):
         return result
 
 
-    def getRandomArticle(self) -> str:
+    def getRandomArticle(self) -> (int, str):
         idx = random.randint(1, self.__maxArticleNumber)
         query = 'SELECT context FROM article WHERE id = ?'
         with self.__conn:
             cursor = self.__conn.cursor()
             cursor.execute(query,(idx,))
             result = cursor.fetchone()[0]
-        return result
+        return idx, result
 
 
     def getArticleById(self, idx:int) -> str:
