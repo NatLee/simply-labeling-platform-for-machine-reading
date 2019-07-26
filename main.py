@@ -1,7 +1,7 @@
 import datetime
-
+import json
 from flask import Flask, render_template, request, jsonify
-from utils.databaseTool import MrcDatabase
+from utils import MrcDatabase
 
 app = Flask(__name__)
 mcd = MrcDatabase('mrc.label')
@@ -17,12 +17,14 @@ def insertQuestionAnswer():
     questionAnswers = request.get_json()
     for questionAnswer in questionAnswers:
         articleId = questionAnswer.get('article_id')
-        question = questionAnswer.get('question')
-        ansStart = questionAnswer.get('answer_start')
+        question  = questionAnswer.get('question')
+        ansStart  = questionAnswer.get('answer_start')
+        ansString = questionAnswer.get('answer_string')
         if articleId is  None or question is None or ansStart is None:
             continue
         else:
-            mcd.insertQuestionAnswer(articleId, question, ansStart)
+            mcd.insertQuestionAnswer(articleId, question, ansStart, ansString)
+    return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/', methods=['POST', 'GET'])

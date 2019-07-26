@@ -2,15 +2,13 @@ var sampleText = "對於歐盟此草案的第11條與第13條引發的爭議較�
 2016年《數位單一市場著作權指令》草案剛剛出台時，音樂產業的相關團體對此表示歡迎。國際唱片業協會指出這是消融向線上服務與著作權所有者鴻溝的「第一步」。Google稱該草案有一些積極的東西，但對其暗示的網際網路審查表示了擔憂。Musically指出，一些人士認為YouTube、SoundCloud這樣的網站不應成為「安全避風港」，並非常歡迎該草案的出台。同年10月10日，中國大陸媒體人民網援引《中國知識產權報》評論稱，該草案對數位環境下中國著作權法的立法完善具有一定的借鑑意義。\
 起草該條款的關鍵人物之一、德國議員阿克塞爾·沃斯稱，該法案只會影響到那些利用著作權材料在賺錢的人。歐洲議會中也有諸多指令支持者。"
 
-function renderText(){
-    $("#passage").val(sampleText);
-}
 
-var passageSelectionStart = 0
-var passageSelectionEnd = 0
-var focusId = 0
-var rowCount = 0
-var ansIndex = []
+var passageSelectionStart = 0;
+var passageSelectionEnd = 0;
+var focusId = 0;
+var rowCount = 0;
+var ansIndex = [];
+var articleId = 0;
 $(document).ready(function(){
     // Create placeholder for answer index.
     var ansObj = {"start": 0, "end": 0, "text": 0};
@@ -20,7 +18,10 @@ $(document).ready(function(){
     newRow(rowCount); focusId=rowCount; rowCount++;
 
     // Setup paragraph.
-    renderText();
+    $.post('/getArticle', function(data) {
+        $('#passage').val(data.article);
+        articleId = data.article_id;
+    });
 
     // Setup events.
     $('#passage').select(function(e) {
@@ -44,6 +45,7 @@ $(document).ready(function(){
     $('#sendBtn').click(function(e){
         generateQA(ansIndex);
     });
+
   });
 
 function newRow(id){
@@ -99,9 +101,21 @@ function modBtnEventHandler(ev){
 function generateQA(rawQAPair){
     for(let i = 0; i < rowCount; i++) {
         let qText = $("#question-" + i).val();
+        rawQAPair[i]['article_id'] = articleId;
+        rawQAPair[i]['answer_start'] = rawQAPair[i]['start'];
+        rawQAPair[i]['answer_string'] = rawQAPair[i]['text'];
         rawQAPair[i]['question'] = qText;
     }
 
     // Push json to backend.
     console.log(rawQAPair);
+    $.ajax({  
+        type: "POST",
+        url: '/insertQuestionAnswer',
+        data: JSON.stringify(rawQAPair),
+        contentType: "application/json",
+        success: function(data){
+            console.log(data)
+        }
+       });
 }
