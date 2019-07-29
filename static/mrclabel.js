@@ -117,5 +117,5 @@ function generateQA(rawQAPair){
         success: function(data){
             console.log(data)
         }
-       });
+    });
 }
