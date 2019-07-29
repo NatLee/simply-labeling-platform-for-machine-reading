@@ -1,6 +1,7 @@
 import sqlite3
 import datetime
 import random
+from pathlib import Path
 
 class MrcDatabase(object):
     """MRC Database SQLite toolkit.
@@ -9,19 +10,47 @@ class MrcDatabase(object):
         sqlitePath (str): The sqlite file path.
 
     """
+
+    ARTICLE_DATABASE = """CREATE TABLE "article" (
+	                        "id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+	                        "context"	TEXT NOT NULL,
+	                        "timestamp"	TEXT NOT NULL,
+	                        "description"	TEXT
+                        );"""
+
+    ANSWER_QUESTION_DATABASE = """CREATE TABLE "question_answer" (
+	                        "id"	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+	                        "article_id"	INTEGER NOT NULL,
+                            "question"	TEXT NOT NULL,
+                            "answer_start"	INTEGER NOT NULL,
+                            "answer_string"	TEXT NOT NULL,
+                            "timestamp"	TEXT NOT NULL
+                        );"""
+
     def __init__(self, sqlitePath:str):
 
         self.__timezone = datetime.timezone(datetime.timedelta(hours=8))
-        self.__conn = sqlite3.connect(sqlitePath, check_same_thread = False)
+        self.__conn = self.__buildDatabase(sqlitePath)
         self.__maxArticleNumber = self.__getMaxArticleNumber()
         self.__maxQuestionAndAnswerNumber = self.__getMaxQuestionAndAnswerNumber()
 
-    def insertArticle(self, article:str):
-        query = 'INSERT into article VALUES (NULL, ?, ?)'
+    def __buildDatabase(self, sqlitePath:str):
+        if Path(sqlitePath).exists():
+            conn = sqlite3.connect(sqlitePath, check_same_thread = False)
+        else:
+            conn = sqlite3.connect(sqlitePath, check_same_thread = False)
+            with conn:
+                cursor = conn.cursor()
+                cursor.execute(self.ARTICLE_DATABASE)
+                cursor.execute(self.ANSWER_QUESTION_DATABASE)
+        return conn
+
+    def insertArticle(self, article:str, description:str):
+        query = 'INSERT into article (context, timestamp, description) VALUES (?, ?, ?);'
         timestamp = datetime.datetime.now().replace(tzinfo=self.__timezone).isoformat()
         with self.__conn:
             cursor = self.__conn.cursor()
-            cursor.execute(query, (article, timestamp))
+            cursor.execute(query, (article, timestamp, description))
 
     def insertQuestionAnswer(self, articleId:int, question:str, answerStart:int, answerString:str):
         query = 'INSERT into question_answer VALUES (NULL, ?, ?, ?, ?, ?)'
