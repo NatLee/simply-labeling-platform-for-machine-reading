@@ -45,13 +45,6 @@ class MrcDatabase(object):
                 cursor.execute(self.ANSWER_QUESTION_DATABASE)
         return conn
 
-    def insertArticle(self, article:str, description:str):
-        query = 'INSERT into article (context, timestamp, description) VALUES (?, ?, ?);'
-        timestamp = datetime.datetime.now().replace(tzinfo=self.__timezone).isoformat()
-        with self.__conn:
-            cursor = self.__conn.cursor()
-            cursor.execute(query, (article, timestamp, description))
-
     def insertQuestionAnswer(self, articleId:int, question:str, answerStart:int, answerString:str):
         query = 'INSERT into question_answer VALUES (NULL, ?, ?, ?, ?, ?)'
         timestamp = datetime.datetime.now().replace(tzinfo=self.__timezone).isoformat()
@@ -78,15 +71,49 @@ class MrcDatabase(object):
             result = cursor.fetchone()[0]
         return result
 
-
-    def getRandomArticle(self) -> (int, str):
-        idx = random.randint(1, self.__maxArticleNumber)
-        query = 'SELECT context FROM article WHERE id = ?'
+    def insertArticle(self, article:str, description:str):
+        query = 'INSERT into article (context, timestamp, description) VALUES (?, ?, ?);'
+        timestamp = datetime.datetime.now().replace(tzinfo=self.__timezone).isoformat()
         with self.__conn:
             cursor = self.__conn.cursor()
-            cursor.execute(query,(idx,))
-            result = cursor.fetchone()[0]
-        return idx, result
+            cursor.execute(query, (article, timestamp, description))
+        self.__maxArticleNumber += 1
+
+    def getAllArticleID(self) -> int:
+        if self.__maxArticleNumber == 0:
+            return []
+
+        query = 'SELECT id FROM article'
+        with self.__conn:
+            cursor = self.__conn.cursor()
+            cursor.execute(query)
+            result = cursor.fetchall()
+            if result:
+                return [res[0] for res in result]
+            else:
+                self.__maxArticleNumber = 0
+                return []
+
+    def getRandomArticle(self) -> (int, str):
+        if self.__maxArticleNumber == 0:
+            return None, None
+
+        ids = self.getAllArticleID()
+        if ids:
+            idx = random.choice(ids)
+        else:
+            return None, None
+        query = 'SELECT id, context FROM article WHERE id = ?'
+        with self.__conn:
+            cursor = self.__conn.cursor()
+            cursor.execute(query, (idx,))
+            result = cursor.fetchone()
+            if result:
+                article_id, context = result
+            else:
+                return self.getRandomArticle()
+
+        return article_id, context
 
 
     def getArticleById(self, idx:int) -> str:
