@@ -1,7 +1,7 @@
 # Simply Labeling Platform for Machine Reading
 
 <p style="text-align: center">
-  <img align="center" src="https://raw.githubusercontent.com/NatLee/Eagle-Wrapper/main/doc/demo.gif" alt="Demo">
+  <img align="center" src="https://raw.githubusercontent.com/NatLee/simply-labeling-platform-for-machine-reading/main/doc/demo.gif" alt="Demo">
 </p>
 
 This is a simple platform for labeling answers to questions in an article.
