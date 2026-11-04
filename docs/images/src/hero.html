@@ -1,0 +1,130 @@
+<!doctype html>
+<!--
+  README 封面。用 Chromium 系的瀏覽器輸出淺色和深色兩張（網址加 #dark 是深色），例如：
+    msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=960,400
+           --default-background-color=00000000 --virtual-time-budget=5000
+           --screenshot=hero-light.png "file:///…/hero.html"
+  再壓小：magick hero-light.png -strip -dither None -colors 256 PNG8:hero-light.png
+  上面的內容都對照過程式：名稱和預設 port 8787（src/api/src/config.rs）、匯入格式（dataset.rs、legacy.rs）、
+  兩種 AI 服務（llm/）、一致性 F1（metrics.rs）、五種匯出格式（dataset.rs 的 EXPORT_FORMATS）。
+  文章和答案是 docs/examples/sample-squad-v2.json 的第一題。
+-->
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Simply Labeling Platform for Machine Reading banner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=block" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #faf9fc; --ink: #18181b; --muted: #71717a; --line: #e4e4e7; --card: #ffffff;
+    --brand: #7c3aed; --brand-soft: #ede9fe; --brand-ink: #5b21b6; --amber: #fde68a; --amber-ink: #92400e;
+    --green: #059669; --shadow: 0 1px 2px rgba(24,24,27,.05), 0 10px 28px -12px rgba(76,29,149,.22);
+    --tint1: rgba(124,58,237,.12); --tint2: rgba(251,191,36,.10); --dot: #e4e4e7;
+  }
+  .dark {
+    --bg: #09090b; --bg2: #111114; --ink: #fafafa; --muted: #a1a1aa; --line: #27272a; --card: #18181b;
+    --brand: #a78bfa; --brand-soft: rgba(139,92,246,.22); --brand-ink: #ddd6fe; --amber: rgba(245,158,11,.30); --amber-ink: #fcd34d;
+    --green: #34d399; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -10px rgba(0,0,0,.6);
+    --tint1: rgba(139,92,246,.20); --tint2: rgba(245,158,11,.08); --dot: #27272a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; }
+  body { width: 960px; height: 400px; color: var(--ink);
+         font-family: Inter, "Noto Sans TC", "Segoe UI", sans-serif; }
+  .frame { position: relative; width: 960px; height: 400px; border-radius: 22px; overflow: hidden;
+           border: 1px solid var(--line);
+           background: radial-gradient(560px 320px at 88% 0%, var(--tint1), transparent 70%),
+                       radial-gradient(420px 260px at 0% 100%, var(--tint2), transparent 70%), var(--bg); }
+  .dots { position: absolute; inset: 0; opacity: .7;
+          background-image: radial-gradient(var(--dot) 1px, transparent 1.3px); background-size: 22px 22px;
+          -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 40%, #000 75%); }
+
+  header { position: absolute; left: 44px; top: 36px; width: 430px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo { width: 54px; height: 54px; flex: none; filter: drop-shadow(0 6px 14px rgba(124,58,237,.35)); }
+  h1 { margin: 0; font-size: 31px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; }
+  h1 small { display: block; font-size: 15px; font-weight: 600; color: var(--brand); letter-spacing: 0; margin-top: 3px; }
+  .tag { margin: 18px 0 0; font-size: 16.5px; line-height: 1.55; color: var(--muted); }
+  .tag b { color: var(--ink); font-weight: 600; }
+  .cmd { display: inline-flex; align-items: center; gap: 10px; margin-top: 18px;
+         font-family: "JetBrains Mono", Consolas, monospace; font-size: 13.5px;
+         padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow); }
+  .cmd span { color: var(--muted); }
+  .cmd em { font-style: normal; color: var(--brand); }
+
+  .mock { position: absolute; right: 40px; top: 34px; width: 410px; border-radius: 16px; border: 1px solid var(--line);
+          background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
+  .mock .bar { height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 12px;
+               border-bottom: 1px solid var(--line); background: var(--bg2); }
+  .mock .bar i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .mock .bar b { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+  .passage { padding: 14px 18px 4px; font-size: 14.5px; line-height: 2; }
+  mark { background: var(--amber); color: inherit; border-radius: 4px; padding: 1px 2px;
+         box-shadow: 0 0 0 2px rgba(245,158,11,.55); }
+  .q { margin: 8px 14px 14px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .q .row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+  .q .dot { width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; flex: none; }
+  .q .ans { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 7px; background: var(--amber); }
+  .chip code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--amber-ink); }
+  .ai { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 3px 8px; border-radius: 7px;
+        font-size: 11.5px; font-weight: 600; color: var(--brand-ink); background: var(--brand-soft); }
+  .ok { color: var(--green); font-size: 11.5px; font-weight: 600; }
+
+  .flow { position: absolute; left: 44px; right: 40px; bottom: 28px; display: flex; align-items: stretch; gap: 0; }
+  .step { flex: 1; padding: 11px 13px; border-radius: 13px; border: 1px solid var(--line); background: var(--card);
+          box-shadow: var(--shadow); min-width: 0; }
+  .step .k { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 700; }
+  .step .k i { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-style: normal;
+               font-size: 11px; font-weight: 700; color: #fff; background: var(--brand); flex: none; }
+  .dark .step .k i { color: #18181b; }
+  .step .v { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+  .arrow { width: 26px; flex: none; display: grid; place-items: center; color: var(--brand); }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="dots"></div>
+  <header>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#7c3aed"/>
+        <path d="M8 9.5h10M8 14h16M8 18.5h7" stroke="#ede9fe" stroke-width="2.2" stroke-linecap="round"/>
+        <rect x="16.5" y="16" width="8" height="5" rx="1.6" fill="#fbbf24"/>
+        <path d="M8 23h16" stroke="#ede9fe" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>
+      </svg>
+      <h1>Simply Labeling Platform<small>for Machine Reading・MRC 標注平台</small></h1>
+    </div>
+    <p class="tag">在文章上<b>框選答案</b>、讓 <b>AI 先出題</b>、多人<b>審核一致性</b>，<br>匯出 SQuAD 2.0 和 LLM 評估、微調用的資料集。</p>
+    <div class="cmd"><span>$</span> docker compose up -d <em>→ :8787</em></div>
+  </header>
+
+  <div class="mock" aria-hidden="true">
+    <div class="bar"><i></i><i></i><i></i><b>文章 1 / 2・台北 101</b></div>
+    <div class="passage">台北 101 位於台北市信義區，高 <mark>508 公尺</mark>，2004 年完工。完工後到 2010 年，它都是世界最高的建築。</div>
+    <div class="q">
+      <div class="row"><span class="dot"></span>Q1　台北 101 有多高？</div>
+      <div class="ans">
+        <span class="chip">508 公尺 <code>18–24</code></span>
+        <span class="ok">✓ 位置已檢查</span>
+        <span class="ai">✦ AI 建議・已接受</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><div class="k"><i>1</i>匯入</div><div class="v">SQuAD、JSONL、<br>舊版 mrc.label</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="k"><i>2</i>AI 建議</div><div class="v">Claude API 或<br>OpenAI 相容 API</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="k"><i>3</i>人工確認</div><div class="v">接受、修改或拒絕；<br>答案位置由後端檢查</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="k"><i>4</i>審核</div><div class="v">多人作答，<br>計算一致性 F1</div></div>
+    <div class="arrow">→</div>
+    <div class="step"><div class="k"><i>5</i>匯出</div><div class="v">SQuAD、JSONL、<br>RAG 評估、對話微調</div></div>
+  </div>
+</div>
+<script>if (location.hash === "#dark") document.documentElement.classList.add("dark");</script>
+</body>
+</html>
