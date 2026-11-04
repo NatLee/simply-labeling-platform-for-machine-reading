@@ -1,4 +1,7 @@
 //! 整合測試：真的啟動伺服器，模型服務換成本機的假伺服器（這些測試不需要任何 API key）。
+//! 這裡都是沒有啟用登入的情況（和舊版一樣）；登入相關的測試在 `auth.rs`。
+
+mod common;
 
 use std::{
     collections::VecDeque,
@@ -14,9 +17,8 @@ use axum::{
     Json, Router,
 };
 use mrc_label::{
-    app, build_state, dataset,
+    dataset,
     llm::{LlmSettings, ProviderConfig, ProviderKind},
-    Config,
 };
 use reqwest::Method;
 use serde_json::{json, Value};
@@ -39,21 +41,7 @@ struct TestApp {
 impl TestApp {
     async fn spawn(llm: LlmSettings) -> Self {
         let dir = TempDir::new().unwrap();
-        let static_dir = dir.path().join("web");
-        std::fs::create_dir_all(&static_dir).unwrap();
-        std::fs::write(static_dir.join("index.html"), "<div id=\"root\"></div>").unwrap();
-        let config = Config {
-            bind: "127.0.0.1:0".into(),
-            data_dir: dir.path().to_path_buf(),
-            database_path: dir.path().join("test.db"),
-            static_dir,
-            max_upload_bytes: 10 * 1024 * 1024,
-            llm,
-        };
-        let state = build_state(config).await.unwrap();
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let base = format!("http://{}", listener.local_addr().unwrap());
-        tokio::spawn(async move { axum::serve(listener, app(state)).await.unwrap() });
+        let base = common::serve(common::config(dir.path(), llm, None)).await;
         Self {
             base,
             http: reqwest::Client::new(),
@@ -123,9 +111,7 @@ impl TestApp {
 }
 
 fn disabled() -> LlmSettings {
-    LlmSettings::Disabled {
-        reason: "沒有設定 LLM_PROVIDER".into(),
-    }
+    common::ai_off()
 }
 
 // ───────────────────────────── 假的模型服務 ─────────────────────────────

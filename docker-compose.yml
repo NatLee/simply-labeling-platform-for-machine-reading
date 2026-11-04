@@ -18,6 +18,12 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
+      # 內建登入（選用）：設了 ADMIN_PASSWORD 才啟用，沒有預設密碼。見 README「登入」。
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # 外部看到的網址；是 https 時登入 cookie 會加 Secure，也用來判斷寫入請求是不是同源
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
 
   # 本機的 OpenAI 相容服務（選用）：docker compose --profile ollama up -d
   # 然後設定 LLM_PROVIDER=openai、OPENAI_BASE_URL=http://ollama:11434/v1、OPENAI_MODEL=<模型名稱>

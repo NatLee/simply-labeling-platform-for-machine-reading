@@ -24,7 +24,12 @@ pub fn normalize_newlines(text: &str) -> String {
 
 /// 文章內容的雜湊，用來判斷同一個專案裡是不是已經有這篇文章。
 pub fn context_hash(context: &str) -> String {
-    let digest = Sha256::digest(context.as_bytes());
+    sha256_hex(context)
+}
+
+/// SHA-256 的十六進位字串（也用在 session token）。
+pub fn sha256_hex(s: &str) -> String {
+    let digest = Sha256::digest(s.as_bytes());
     digest.iter().map(|b| format!("{b:02x}")).collect()
 }
 

@@ -2,15 +2,18 @@
 
 mod ai;
 mod articles;
+mod auth;
 mod data;
 mod projects;
 mod questions;
+mod users;
 
 pub use data::import_file;
 
 use axum::{
     extract::DefaultBodyLimit,
     http::{header, HeaderValue},
+    middleware,
     routing::{delete, get, post},
     Json, Router,
 };
@@ -21,7 +24,7 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use crate::{dataset::EXPORT_FORMATS, error::AppError, legacy, state::AppState};
+use crate::{auth::guard, dataset::EXPORT_FORMATS, error::AppError, legacy, state::AppState};
 
 /// 列表 API 一頁最多幾筆；前端要更多就用 offset 往後翻。
 pub const MAX_PAGE_SIZE: i64 = 200;
@@ -39,6 +42,11 @@ pub fn router(state: AppState) -> Router {
     let upload_limit = state.config.max_upload_bytes;
     let api = Router::new()
         .route("/health", get(|| async { "ok" }))
+        .route("/auth/state", get(auth::state))
+        .route("/auth/login", post(auth::login))
+        .route("/auth/logout", post(auth::logout))
+        .route("/users", get(users::list).post(users::create))
+        .route("/users/{id}", axum::routing::put(users::update))
         .route("/meta", get(meta))
         .route(
             "/annotators",
@@ -95,6 +103,8 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .nest("/api", api)
         .merge(legacy::router())
+        // 登入、角色和同源檢查（沒啟用登入時不做事）。route_layer 只套在 API 上，前端檔案不用登入就拿得到。
+        .route_layer(middleware::from_fn_with_state(state.clone(), guard))
         .fallback_service(spa)
         .layer(SetResponseHeaderLayer::if_not_present(
             header::X_CONTENT_TYPE_OPTIONS,
@@ -125,6 +135,7 @@ async fn meta(axum::extract::State(state): axum::extract::State<AppState>) -> Js
     Json(json!({
         "version": env!("CARGO_PKG_VERSION"),
         "ai": ai,
+        "auth": { "enabled": state.auth.is_some() },
         "export_formats": EXPORT_FORMATS.iter().map(|f| f.id()).collect::<Vec<_>>(),
         "max_upload_mb": state.config.max_upload_bytes / 1024 / 1024,
     }))

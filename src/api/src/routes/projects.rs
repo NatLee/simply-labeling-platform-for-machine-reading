@@ -90,9 +90,15 @@ pub struct AnnotatorInput {
     name: String,
 }
 
+/// 沒啟用登入時，標註者自己輸入名字。啟用登入後，標註者就是帳號，由管理員新增帳號產生。
 pub async fn create_annotator(
     State(state): State<AppState>,
     Json(input): Json<AnnotatorInput>,
 ) -> AppResult<Json<Annotator>> {
+    if state.auth.is_some() {
+        return Err(AppError::Forbidden(
+            "已啟用登入：標註者就是帳號，請管理員新增帳號".into(),
+        ));
+    }
     Ok(Json(store::create_annotator(&state.db, &input.name).await?))
 }

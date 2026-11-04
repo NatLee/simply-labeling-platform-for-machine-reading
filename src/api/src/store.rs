@@ -101,6 +101,11 @@ pub async fn annotators(db: &SqlitePool) -> Result<Vec<Annotator>> {
 
 /// 新增標註者；同名的已經存在就直接回傳那一位（換電腦時輸入自己的名字就能接著用）。
 pub async fn create_annotator(db: &SqlitePool, name: &str) -> AppResult<Annotator> {
+    annotator_by_name_or_create(db, name).await
+}
+
+/// 名字對應的標註者，沒有就建立。帳號也用這個連到同名的標註者。
+pub async fn annotator_by_name_or_create(db: &SqlitePool, name: &str) -> AppResult<Annotator> {
     let name = name.trim();
     if name.is_empty() {
         return Err(AppError::bad("名字不能是空的"));
@@ -711,6 +716,7 @@ pub async fn import_dataset(
     articles: Vec<DatasetArticle>,
     unit: OffsetUnit,
     origin: Origin,
+    created_by: Option<i64>,
     format_label: &str,
 ) -> AppResult<ImportSummary> {
     let mut summary = ImportSummary {
@@ -757,6 +763,7 @@ pub async fn import_dataset(
                 context: &context,
                 unit,
                 origin,
+                created_by,
                 now: &now,
             };
             import_question(&mut tx, &mut summary, &mut existing, &target, qa).await?;
@@ -771,6 +778,8 @@ struct ImportTarget<'a> {
     context: &'a str,
     unit: OffsetUnit,
     origin: Origin,
+    /// 舊版 API 寫入時是登入的人；匯入檔案時是 None。
+    created_by: Option<i64>,
     now: &'a str,
 }
 
@@ -799,7 +808,7 @@ async fn import_question(
             reference_answer: &qa.reference_answer,
             origin: target.origin,
             external_id: qa.id.as_deref(),
-            created_by: None,
+            created_by: target.created_by,
             created_at,
         },
     )
@@ -831,7 +840,15 @@ async fn import_question(
             start,
             text: answer,
         };
-        insert_answer(conn, question_id, &span, None, target.origin, created_at).await?;
+        insert_answer(
+            conn,
+            question_id,
+            &span,
+            target.created_by,
+            target.origin,
+            created_at,
+        )
+        .await?;
     }
     Ok(())
 }

@@ -19,7 +19,7 @@ function Stat({ label, value, hint }: { label: string; value: string | number; h
 
 export function Overview() {
   const projectId = Number(useParams().pid);
-  const { projects } = useApp();
+  const { projects, canReview } = useApp();
   const project = projects.find((p) => p.id === projectId);
   const { data: s, error } = useAsync(() => api.stats(projectId), [projectId]);
 
@@ -34,12 +34,16 @@ export function Overview() {
         subtitle={project?.description || "標註進度、審核狀態和標註者之間的一致程度。"}
         actions={
           <>
-            <Link to={`/p/${projectId}/data`} className="btn btn-secondary">
-              <ArrowDownUp className="size-4" /> 匯入／匯出
-            </Link>
-            <Link to={`/p/${projectId}/review`} className="btn btn-secondary">
-              <ClipboardCheck className="size-4" /> 審核
-            </Link>
+            {canReview && (
+              <>
+                <Link to={`/p/${projectId}/data`} className="btn btn-secondary">
+                  <ArrowDownUp className="size-4" /> 匯入／匯出
+                </Link>
+                <Link to={`/p/${projectId}/review`} className="btn btn-secondary">
+                  <ClipboardCheck className="size-4" /> 審核
+                </Link>
+              </>
+            )}
             <Link to={`/p/${projectId}/annotate`} className="btn btn-primary">
               <Highlighter className="size-4" /> 開始標註
             </Link>

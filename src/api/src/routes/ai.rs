@@ -7,6 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    auth::Actor,
     dataset::Span,
     db,
     error::{AppError, AppResult},
@@ -74,10 +75,12 @@ pub struct GenerateInput {
 /// 請模型替文章出題。已經有的問題和還沒處理的建議都會告訴模型，避免重複。
 pub async fn generate(
     State(state): State<AppState>,
+    actor: Actor,
     Path(article_id): Path<i64>,
     Json(input): Json<GenerateInput>,
 ) -> AppResult<Json<SuggestResponse>> {
     let llm = llm(&state)?;
+    let requested_by = actor.annotator(&state.db, input.annotator_id).await?;
     let article = store::article(&state.db, article_id).await?;
     let existing: Vec<String> = sqlx::query_scalar(
         "SELECT text FROM questions WHERE article_id = ?1
@@ -95,7 +98,7 @@ pub async fn generate(
         llm,
         article_id,
         drafts.into_iter().take(count),
-        input.annotator_id,
+        requested_by,
     )
     .await?;
     Ok(Json(SuggestResponse {
@@ -113,10 +116,12 @@ pub struct AnswerInput {
 /// 請模型替人寫好的問題找答案（或判斷無法回答）。
 pub async fn answer(
     State(state): State<AppState>,
+    actor: Actor,
     Path(article_id): Path<i64>,
     Json(input): Json<AnswerInput>,
 ) -> AppResult<Json<SuggestResponse>> {
     let llm = llm(&state)?;
+    let requested_by = actor.annotator(&state.db, input.annotator_id).await?;
     let question = input.question.trim();
     if question.is_empty() {
         return Err(AppError::bad("先寫好問題，再請 AI 找答案"));
@@ -130,7 +135,7 @@ pub async fn answer(
         question: question.to_string(),
         ..d
     });
-    let suggestions = save(&state, llm, article_id, drafts, input.annotator_id).await?;
+    let suggestions = save(&state, llm, article_id, drafts, requested_by).await?;
     Ok(Json(SuggestResponse {
         suggestions,
         dropped,
@@ -158,9 +163,6 @@ async fn save(
     drafts: impl Iterator<Item = Draft>,
     requested_by: Option<i64>,
 ) -> AppResult<Vec<Suggestion>> {
-    if let Some(id) = requested_by {
-        store::annotator(&state.db, id).await?;
-    }
     let now = db::now();
     let mut out = Vec::new();
     for d in drafts {
@@ -202,6 +204,7 @@ pub struct AcceptInput {
 
 pub async fn accept(
     State(state): State<AppState>,
+    actor: Actor,
     Path(id): Path<i64>,
     Json(input): Json<AcceptInput>,
 ) -> AppResult<Json<QuestionView>> {
@@ -210,10 +213,7 @@ pub async fn accept(
         return Err(AppError::conflict("這個建議已經處理過了"));
     }
     let article = store::article(&state.db, s.article_id).await?;
-    let annotator = match input.annotator_id {
-        Some(a) => Some(store::annotator(&state.db, a).await?.id),
-        None => None,
-    };
+    let annotator = actor.annotator(&state.db, input.annotator_id).await?;
     let suggested: Vec<SpanInput> = match (s.answer_start, &s.answer_text) {
         (Some(start), Some(text)) => vec![SpanInput {
             start: start as usize,

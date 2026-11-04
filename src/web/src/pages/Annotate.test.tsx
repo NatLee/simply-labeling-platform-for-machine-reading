@@ -14,6 +14,7 @@ const META: Meta = {
   ai: { enabled: true, provider: "anthropic", model: "claude-opus-5-5" },
   export_formats: ["squad-v2"],
   max_upload_mb: 200,
+  auth: { enabled: false },
 };
 
 function detail(questions: Question[] = []): ArticleDetail {
@@ -68,6 +69,8 @@ const SUGGESTION: Suggestion = {
 function baseRoutes() {
   return {
     "GET /meta": () => META,
+    // 沒啟用登入：和舊版一樣，標註者自己選
+    "GET /auth/state": () => ({ enabled: false, user: null }),
     "GET /annotators": () => [{ id: 1, name: "小明", created_at: NOW }],
     "GET /projects": () => [],
     "GET /articles/5": () => detail(),

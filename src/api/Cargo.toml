@@ -2,6 +2,7 @@
 name = "mrc-label"
 version = "2.0.0"
 edition = "2021"
+license = "MIT"
 description = "Self-hosted labeling platform for machine reading comprehension datasets (SQuAD v1/v2), with AI-assisted suggestions"
 publish = false
 
@@ -15,8 +16,11 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
+argon2 = "0.5"
 axum = "0.8"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+# OsRng：密碼的 salt 和 session token 用作業系統的亂數
+rand_core = { version = "0.6", features = ["getrandom"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
@@ -27,6 +31,12 @@ tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["fs", "trace", "set-header"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# 密碼雜湊在未最佳化的 build 很慢；讓測試跑快一點。
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
+opt-level = 3
 
 [profile.release]
 lto = "thin"

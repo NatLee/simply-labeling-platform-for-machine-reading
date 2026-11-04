@@ -14,6 +14,8 @@ use reqwest::{header::RETRY_AFTER, RequestBuilder, StatusCode};
 use serde::Serialize;
 use serde_json::Value;
 
+pub use crate::config::Secret;
+
 pub use anthropic::{
     API_VERSION as ANTHROPIC_API_VERSION, DEFAULT_MODEL as ANTHROPIC_DEFAULT_MODEL,
 };
@@ -40,22 +42,6 @@ impl ProviderKind {
             Self::Anthropic => "anthropic",
             Self::OpenAi => "openai",
         }
-    }
-}
-
-/// 不會被印出來的字串（API key）。
-#[derive(Clone)]
-pub struct Secret(String);
-
-impl Secret {
-    pub fn expose(&self) -> &str {
-        &self.0
-    }
-}
-
-impl fmt::Debug for Secret {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Secret(***)")
     }
 }
 
@@ -102,7 +88,7 @@ impl LlmSettings {
                     model: get("ANTHROPIC_MODEL").unwrap_or_else(|| ANTHROPIC_DEFAULT_MODEL.into()),
                     base_url: get("ANTHROPIC_BASE_URL")
                         .unwrap_or_else(|| ANTHROPIC_DEFAULT_BASE_URL.into()),
-                    api_key: Some(Secret(key)),
+                    api_key: Some(Secret::new(key)),
                 })
             }
             "openai" => {
@@ -114,7 +100,7 @@ impl LlmSettings {
                     model,
                     base_url: get("OPENAI_BASE_URL")
                         .unwrap_or_else(|| OPENAI_DEFAULT_BASE_URL.into()),
-                    api_key: get("OPENAI_API_KEY").map(Secret),
+                    api_key: get("OPENAI_API_KEY").map(Secret::new),
                 })
             }
             other => Self::Disabled {

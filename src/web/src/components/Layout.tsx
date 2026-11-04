@@ -5,6 +5,7 @@ import {
   FolderKanban,
   Gauge,
   Highlighter,
+  LogOut,
   Menu,
   Monitor,
   Moon,
@@ -18,6 +19,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useApp } from "../context";
+import type { AuthUser, Role } from "../types";
 import { applyTheme, storedTheme, type ThemeChoice } from "../lib/theme";
 import { AnnotatorDialog } from "./AnnotatorPicker";
 
@@ -28,15 +30,22 @@ interface NavItem {
   end?: boolean;
 }
 
-function projectNav(pid: string): NavItem[] {
+/** 專案的導覽。啟用登入時，標註者看不到審核和匯入匯出（後端也會擋）。 */
+function projectNav(pid: string, canReview: boolean): NavItem[] {
   return [
     { to: `/p/${pid}`, label: "概覽", icon: Gauge, end: true },
     { to: `/p/${pid}/annotate`, label: "標註", icon: Highlighter },
     { to: `/p/${pid}/articles`, label: "文章", icon: FileText },
-    { to: `/p/${pid}/review`, label: "審核", icon: ClipboardCheck },
-    { to: `/p/${pid}/data`, label: "匯入／匯出", icon: ArrowDownUp },
+    ...(canReview
+      ? [
+          { to: `/p/${pid}/review`, label: "審核", icon: ClipboardCheck },
+          { to: `/p/${pid}/data`, label: "匯入／匯出", icon: ArrowDownUp },
+        ]
+      : []),
   ];
 }
+
+export const ROLE_LABEL: Record<Role, string> = { admin: "管理員", reviewer: "審核者", annotator: "標註者" };
 
 function Brand() {
   return (
@@ -102,13 +111,14 @@ function useProjectId(): string | undefined {
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pid = useProjectId();
+  const { canReview } = useApp();
   return (
     <nav className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <p className="px-3 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">專案</p>
         <ProjectSwitcher pid={pid} />
       </div>
-      {pid && <NavList items={projectNav(pid)} onNavigate={onNavigate} />}
+      {pid && <NavList items={projectNav(pid, canReview)} onNavigate={onNavigate} />}
       <NavList
         items={[
           { to: "/", label: "所有專案", icon: FolderKanban, end: true },
@@ -152,9 +162,42 @@ function ThemeToggle() {
   );
 }
 
+/** 啟用登入時：顯示帳號、角色和登出。 */
+function AccountFooter({ user }: { user: AuthUser }) {
+  const { logout, meta } = useApp();
+  return (
+    <div className="flex items-center gap-1">
+      <span className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+          <UserRound className="size-4" />
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium">{user.username}</span>
+          <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
+            {ROLE_LABEL[user.role]}
+            {meta ? `・v${meta.version}` : ""}
+          </span>
+        </span>
+      </span>
+      <button className="btn btn-ghost px-2" onClick={() => void logout()} title="登出">
+        <LogOut className="size-4" />
+        <span className="text-xs">登出</span>
+      </button>
+    </div>
+  );
+}
+
 function SidebarFooter() {
-  const { annotator, meta } = useApp();
+  const { annotator, meta, auth } = useApp();
   const [open, setOpen] = useState(false);
+  if (auth?.enabled && auth.user) {
+    return (
+      <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+        <AccountFooter user={auth.user} />
+        <ThemeToggle />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
       <button

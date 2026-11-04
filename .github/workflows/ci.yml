@@ -90,3 +90,26 @@ jobs:
           # 舊版 Flask 的 API 還在
           curl -fsS http://127.0.0.1:8787/article | grep -q article_id
           docker logs mrc
+      - name: Smoke test with login turned on
+        run: |
+          # 每次跑都用新的隨機密碼，不放任何固定密碼在 repo 裡
+          pw=$(openssl rand -hex 16)
+          docker run -d --name mrc-login -p 8788:8787 -e ADMIN_PASSWORD="$pw" mrc-label:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8788/api/health && break
+            sleep 1
+          done
+          # 沒登入：API 和舊版 API 都回 401，前端檔案照常
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8788/api/projects)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8788/article)" = 401
+          curl -fsS http://127.0.0.1:8788/ | grep -q '<div id="root">'
+          # 登入後可以用，cookie 是 HttpOnly
+          curl -fsS -c jar.txt -D login-headers.txt -H 'content-type: application/json' \
+            -d "{\"username\":\"admin\",\"password\":\"$pw\"}" http://127.0.0.1:8788/api/auth/login
+          grep -qi 'set-cookie: mrc_session=.*HttpOnly' login-headers.txt
+          curl -fsS -b jar.txt http://127.0.0.1:8788/api/projects
+          # 別的網站送來的寫入被擋下
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b jar.txt -H 'Origin: https://evil.example' \
+            -H 'content-type: application/json' -d '{"name":"x"}' http://127.0.0.1:8788/api/projects)" = 403
+          if docker logs mrc-login 2>&1 | grep -q "$pw"; then echo "password leaked into logs"; exit 1; fi
+          docker logs mrc-login
