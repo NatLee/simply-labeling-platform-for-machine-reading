@@ -9,6 +9,32 @@ export interface Meta {
   ai: { enabled: true; provider: "anthropic" | "openai"; model: string } | { enabled: false; reason: string | null };
   export_formats: string[];
   max_upload_mb: number;
+  auth: { enabled: boolean };
+}
+
+export type Role = "admin" | "annotator" | "reviewer";
+
+/** 登入的人（後端 `auth::CurrentUser`）。`annotator_id` 是同名的標註者。 */
+export interface AuthUser {
+  id: number;
+  username: string;
+  role: Role;
+  annotator_id: number;
+}
+
+export interface AuthState {
+  enabled: boolean;
+  user: AuthUser | null;
+}
+
+/** 帳號管理頁的一列。 */
+export interface UserAccount {
+  id: number;
+  username: string;
+  role: Role;
+  disabled: boolean;
+  annotator_id: number;
+  created_at: string;
 }
 
 export interface Annotator {

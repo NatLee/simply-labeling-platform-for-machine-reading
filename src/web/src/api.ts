@@ -1,5 +1,7 @@
 import type {
   Annotator,
+  AuthState,
+  AuthUser,
   Article,
   ArticleDetail,
   ArticleListItem,
@@ -12,10 +14,15 @@ import type {
   Question,
   ReviewPage,
   ReviewStatus,
+  Role,
   SpanInput,
   SuggestResponse,
   Suggestion,
+  UserAccount,
 } from "./types";
+
+/** 啟用登入時，session 過期或沒登入會收到 401；App 聽到這個事件就回到登入頁。 */
+export const UNAUTHORIZED_EVENT = "mrc:unauthorized";
 
 /** 後端回 `{"error": "訊息"}` 時丟出這個，訊息直接給使用者看。 */
 export class ApiError extends Error {
@@ -43,6 +50,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     data = text ? JSON.parse(text) : undefined;
   } catch {
     data = text;
+  }
+  if (res.status === 401 && path !== "/auth/login") {
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
   if (!res.ok) {
     const message =
@@ -72,6 +82,15 @@ export type ArticleFilter = "unlabeled" | "pending" | "reviewed";
 
 export const api = {
   meta: () => get<Meta>("/meta"),
+
+  authState: () => get<AuthState>("/auth/state"),
+  login: (username: string, password: string) => post<{ user: AuthUser }>("/auth/login", { username, password }),
+  logout: () => post<void>("/auth/logout"),
+  users: () => get<UserAccount[]>("/users"),
+  createUser: (username: string, password: string, role: Role) =>
+    post<UserAccount>("/users", { username, password, role }),
+  updateUser: (id: number, input: { role?: Role; disabled?: boolean; password?: string }) =>
+    put<UserAccount>(`/users/${id}`, input),
 
   annotators: () => get<Annotator[]>("/annotators"),
   createAnnotator: (name: string) => post<Annotator>("/annotators", { name }),

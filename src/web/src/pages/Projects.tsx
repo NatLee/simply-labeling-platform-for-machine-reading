@@ -74,7 +74,7 @@ function ProjectForm({
 }
 
 export function Projects() {
-  const { projects, refreshProjects } = useApp();
+  const { projects, refreshProjects, canAdmin } = useApp();
   const toast = useToast();
   const [editing, setEditing] = useState<ProjectSummary | null | "new">(null);
 
@@ -94,15 +94,17 @@ export function Projects() {
         title="所有專案"
         subtitle="一個專案是一組要一起匯出的文章，例如一份資料集。"
         actions={
-          <button className="btn btn-primary" onClick={() => setEditing("new")}>
-            <Plus className="size-4" /> 新增專案
-          </button>
+          canAdmin && (
+            <button className="btn btn-primary" onClick={() => setEditing("new")}>
+              <Plus className="size-4" /> 新增專案
+            </button>
+          )
         }
       />
       {projects.length === 0 ? (
         <div className="card">
           <Empty icon={FolderKanban} title="還沒有專案">
-            新增一個專案，再匯入文章或 SQuAD 資料集開始標註。
+            {canAdmin ? "新增一個專案，再匯入文章或 SQuAD 資料集開始標註。" : "請管理員新增專案。"}
           </Empty>
         </div>
       ) : (
@@ -116,16 +118,20 @@ export function Projects() {
                     {p.description || "沒有說明"}
                   </p>
                 </Link>
-                <button className="btn btn-ghost px-1.5" onClick={() => setEditing(p)} aria-label={`編輯 ${p.name}`}>
-                  <Pencil className="size-4" />
-                </button>
-                <button
-                  className="btn btn-ghost px-1.5 hover:text-rose-600"
-                  onClick={() => void remove(p)}
-                  aria-label={`刪除 ${p.name}`}
-                >
-                  <Trash2 className="size-4" />
-                </button>
+                {canAdmin && (
+                  <>
+                    <button className="btn btn-ghost px-1.5" onClick={() => setEditing(p)} aria-label={`編輯 ${p.name}`}>
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      className="btn btn-ghost px-1.5 hover:text-rose-600"
+                      onClick={() => void remove(p)}
+                      aria-label={`刪除 ${p.name}`}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </>
+                )}
               </div>
               <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
                 {[

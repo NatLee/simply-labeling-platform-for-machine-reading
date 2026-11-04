@@ -1,14 +1,21 @@
 import { Navigate, Route, Routes } from "react-router";
 import { Layout } from "./components/Layout";
+import { Loading } from "./components/ui";
+import { useApp } from "./context";
 import { Annotate } from "./pages/Annotate";
 import { Articles } from "./pages/Articles";
 import { DataPage } from "./pages/DataPage";
+import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
 import { Projects } from "./pages/Projects";
 import { Review } from "./pages/Review";
 import { Settings } from "./pages/Settings";
 
 export function App() {
+  const { auth } = useApp();
+  if (!auth) return <Loading />;
+  // 啟用內建登入又還沒登入：只有登入頁
+  if (auth.enabled && !auth.user) return <Login />;
   return (
     <Routes>
       <Route element={<Layout />}>

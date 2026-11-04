@@ -89,7 +89,7 @@ function NewArticle({ projectId, open, onClose }: { projectId: number; open: boo
 export function Articles() {
   const projectId = Number(useParams().pid);
   const toast = useToast();
-  const { refreshProjects } = useApp();
+  const { refreshProjects, canAdmin } = useApp();
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ArticleFilter | undefined>(undefined);
@@ -212,13 +212,15 @@ export function Articles() {
                         </div>
                       </td>
                       <td className="td">
-                        <button
-                          className="btn btn-ghost px-1.5 py-1 hover:text-rose-600"
-                          onClick={() => void remove(a.id, label)}
-                          aria-label={`刪除 ${label}`}
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
+                        {canAdmin && (
+                          <button
+                            className="btn btn-ghost px-1.5 py-1 hover:text-rose-600"
+                            onClick={() => void remove(a.id, label)}
+                            aria-label={`刪除 ${label}`}
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

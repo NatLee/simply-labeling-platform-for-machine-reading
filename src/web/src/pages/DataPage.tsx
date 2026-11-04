@@ -45,7 +45,7 @@ function Summary({ s }: { s: ImportSummary }) {
 
 export function DataPage() {
   const projectId = Number(useParams().pid);
-  const { meta, refreshProjects } = useApp();
+  const { meta, refreshProjects, canAdmin } = useApp();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
@@ -76,6 +76,7 @@ export function DataPage() {
     <PageBody>
       <PageHeader title="匯入／匯出" subtitle="檔案格式會自動判斷。同一個檔案匯入兩次不會重複。" />
       <div className="grid gap-4 lg:grid-cols-2">
+        {canAdmin ? (
         <section className="card p-5">
           <h2 className="mb-1 flex items-center gap-2 font-semibold">
             <FileUp className="size-4 text-brand-600" /> 匯入
@@ -124,6 +125,14 @@ export function DataPage() {
           )}
           {summary && <Summary s={summary} />}
         </section>
+        ) : (
+          <section className="card p-5 text-sm text-zinc-500 dark:text-zinc-400">
+            <h2 className="mb-1 flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100">
+              <FileUp className="size-4 text-brand-600" /> 匯入
+            </h2>
+            匯入資料要管理員權限。
+          </section>
+        )}
 
         <section className="card p-5">
           <h2 className="mb-1 flex items-center gap-2 font-semibold">
