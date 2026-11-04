@@ -1,0 +1,32 @@
+services:
+  mrc-label:
+    build: .
+    image: mrc-label:latest
+    container_name: mrc-label
+    restart: unless-stopped
+    ports:
+      - "${MRC_PORT:-8787}:8787"
+    volumes:
+      # SQLite 資料庫在這裡，請記得備份
+      - mrc-data:/app/data
+    environment:
+      # AI 輔助標注（選用）。把值寫在同一個資料夾的 .env（不會進 git），見 README「AI 輔助標注」。
+      # 沒設定 LLM_PROVIDER 時 AI 功能關閉，其他功能照常。
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+
+  # 本機的 OpenAI 相容服務（選用）：docker compose --profile ollama up -d
+  # 然後設定 LLM_PROVIDER=openai、OPENAI_BASE_URL=http://ollama:11434/v1、OPENAI_MODEL=<模型名稱>
+  ollama:
+    image: ollama/ollama:0.40.5
+    profiles: ["ollama"]
+    volumes:
+      - ollama-models:/root/.ollama
+
+volumes:
+  mrc-data:
+  ollama-models:
