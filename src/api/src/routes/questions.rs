@@ -7,20 +7,13 @@ use serde::Deserialize;
 
 use super::paginate;
 use crate::{
+    auth::Actor,
     db,
     error::{AppError, AppResult},
     models::{Origin, QuestionView, ReviewStatus, SpanInput},
     state::AppState,
     store::{self, NewQuestion, ReviewPage},
 };
-
-/// 寫入時帶的標註者。沒有帶就是匿名（例如用腳本呼叫 API）。
-async fn check_annotator(state: &AppState, id: Option<i64>) -> AppResult<Option<i64>> {
-    if let Some(id) = id {
-        store::annotator(&state.db, id).await?;
-    }
-    Ok(id)
-}
 
 #[derive(Deserialize)]
 pub struct QuestionInput {
@@ -37,11 +30,12 @@ pub struct QuestionInput {
 /// 新增問題和它的答案。每個答案的位置都會檢查，有一個對不上就整題不存。
 pub async fn create(
     State(state): State<AppState>,
+    actor: Actor,
     Path(article_id): Path<i64>,
     Json(input): Json<QuestionInput>,
 ) -> AppResult<(StatusCode, Json<QuestionView>)> {
     let article = store::article(&state.db, article_id).await?;
-    let annotator = check_annotator(&state, input.annotator_id).await?;
+    let annotator = actor.annotator(&state.db, input.annotator_id).await?;
     if input.text.trim().is_empty() {
         return Err(AppError::bad("問題不能是空的"));
     }
@@ -134,12 +128,13 @@ pub struct AnswerInput {
 /// 加一個答案（例如第二位標註者對同一題作答）。同一個人標一樣的範圍兩次只會留一筆。
 pub async fn add_answer(
     State(state): State<AppState>,
+    actor: Actor,
     Path(id): Path<i64>,
     Json(input): Json<AnswerInput>,
 ) -> AppResult<Json<QuestionView>> {
     let q = store::question(&state.db, id).await?;
     let article = store::article(&state.db, q.article_id).await?;
-    let annotator = check_annotator(&state, input.annotator_id).await?;
+    let annotator = actor.annotator(&state.db, input.annotator_id).await?;
     let span = store::check_span(&article.context, &input.span)?;
     let mut conn = state.db.acquire().await?;
     store::insert_answer(&mut conn, id, &span, annotator, Origin::Human, &db::now()).await?;
@@ -177,11 +172,12 @@ pub struct ReviewInput {
 /// 審核：通過、退回，或改回待審核。
 pub async fn review(
     State(state): State<AppState>,
+    actor: Actor,
     Path(id): Path<i64>,
     Json(input): Json<ReviewInput>,
 ) -> AppResult<Json<QuestionView>> {
     store::question(&state.db, id).await?;
-    let reviewer = check_annotator(&state, input.annotator_id).await?;
+    let reviewer = actor.annotator(&state.db, input.annotator_id).await?;
     let (reviewer, reviewed_at) = match input.status {
         ReviewStatus::Pending => (None, None),
         _ => (reviewer, Some(db::now())),

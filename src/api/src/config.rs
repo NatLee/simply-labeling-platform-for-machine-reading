@@ -1,10 +1,10 @@
 //! 設定都來自環境變數，全部都有預設值。AI 相關的變數見 [`crate::llm::LlmSettings`]。
 
-use std::{env, path::PathBuf};
+use std::{env, fmt, path::PathBuf};
 
 use anyhow::{Context, Result};
 
-use crate::llm::LlmSettings;
+use crate::{auth::AuthSettings, llm::LlmSettings};
 
 /// 舊版 Flask 平台用的 port，沿用當預設值。
 pub const DEFAULT_BIND: &str = "0.0.0.0:8787";
@@ -18,6 +18,8 @@ pub struct Config {
     /// 匯入檔案的大小上限。SQuAD 2.0 的訓練集約 40 MB。
     pub max_upload_bytes: usize,
     pub llm: LlmSettings,
+    /// 內建登入；沒設定 `ADMIN_PASSWORD` 時是 `None`，和舊版一樣不用登入。
+    pub auth: Option<AuthSettings>,
 }
 
 impl Config {
@@ -35,8 +37,29 @@ impl Config {
             ),
             max_upload_bytes: max_upload_mb * 1024 * 1024,
             llm: LlmSettings::from_env(var),
+            auth: AuthSettings::from_env(var)?,
             data_dir,
         })
+    }
+}
+
+/// 不會被印出來的字串（API key、密碼）。
+#[derive(Clone)]
+pub struct Secret(String);
+
+impl Secret {
+    pub fn new(value: String) -> Self {
+        Self(value)
+    }
+
+    pub fn expose(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Debug for Secret {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Secret(***)")
     }
 }
 

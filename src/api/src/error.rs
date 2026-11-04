@@ -9,8 +9,14 @@ use serde_json::json;
 #[derive(Debug)]
 pub enum AppError {
     BadRequest(String),
+    /// 沒登入，或 session 過期。
+    Unauthorized(String),
+    /// 登入了，但角色沒有權限；或寫入請求不是同源送來的。
+    Forbidden(String),
     NotFound(String),
     Conflict(String),
+    /// 登入失敗太多次。
+    TooManyRequests(String),
     /// AI 功能沒有開啟。
     Unavailable(String),
     /// 呼叫模型失敗，或模型的回答不能用。
@@ -37,8 +43,11 @@ impl std::fmt::Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AppError::BadRequest(m)
+            | AppError::Unauthorized(m)
+            | AppError::Forbidden(m)
             | AppError::NotFound(m)
             | AppError::Conflict(m)
+            | AppError::TooManyRequests(m)
             | AppError::Unavailable(m)
             | AppError::BadGateway(m) => f.write_str(m),
             AppError::Internal(e) => write!(f, "{e:#}"),
@@ -50,8 +59,11 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, msg) = match self {
             AppError::BadRequest(m) => (StatusCode::BAD_REQUEST, m),
+            AppError::Unauthorized(m) => (StatusCode::UNAUTHORIZED, m),
+            AppError::Forbidden(m) => (StatusCode::FORBIDDEN, m),
             AppError::NotFound(m) => (StatusCode::NOT_FOUND, m),
             AppError::Conflict(m) => (StatusCode::CONFLICT, m),
+            AppError::TooManyRequests(m) => (StatusCode::TOO_MANY_REQUESTS, m),
             AppError::Unavailable(m) => (StatusCode::SERVICE_UNAVAILABLE, m),
             AppError::BadGateway(m) => (StatusCode::BAD_GATEWAY, m),
             AppError::Internal(err) => {

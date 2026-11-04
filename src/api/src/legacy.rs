@@ -4,6 +4,7 @@
 //! 2. 舊版的 3 個 HTTP API：`GET /article`、`POST /article`、`POST /question-answer`。
 //!    保留它們是為了讓原本寫好的腳本不用改；新程式請用 `/api/...`（見 README）。
 //!    之後要拿掉時，刪掉 [`router`] 和 `routes/mod.rs` 裡的 `.merge(legacy::router())` 就好。
+//!    啟用內建登入時，這 3 個 API 也要登入（帶 session cookie），權限見 [`crate::auth::required_level`]。
 
 use std::path::Path;
 
@@ -23,6 +24,7 @@ use sqlx::{
 };
 
 use crate::{
+    auth::Actor,
     dataset::{DatasetArticle, DatasetQa, Span},
     db,
     error::AppResult,
@@ -206,9 +208,12 @@ struct LegacyQa {
 /// 和舊版一樣略過不完整的筆數；位置對不上時找最近的同樣文字，找不到就只存問題。
 async fn legacy_insert_qas(
     State(state): State<AppState>,
+    actor: Actor,
     Json(rows): Json<Vec<LegacyQa>>,
 ) -> AppResult<Json<Value>> {
     let project = default_project(&state.db).await?;
+    // 啟用登入時記成登入的人；沒啟用時和舊版一樣是匿名
+    let created_by = actor.annotator(&state.db, None).await?;
     for row in rows {
         let (Some(article_id), Some(question), Some(start)) =
             (row.article_id, row.question, row.answer_start)
@@ -249,6 +254,7 @@ async fn legacy_insert_qas(
             dataset,
             LEGACY_OFFSET_UNIT,
             Origin::Human,
+            created_by,
             "legacy-api",
         )
         .await?;
