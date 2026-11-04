@@ -4,15 +4,42 @@
 
 - 答案位置 `start` 是**字元位置**（Unicode code point），和 SQuAD、Python 的字串索引一樣。瀏覽器的 `selectionStart` 是 UTF-16 位置，文章裡有 emoji 時兩者不同，送出前要換算。
 - 後端會檢查「文章從 `start` 開始的文字」是否正好等於答案，對不上就回 400。
-- 寫入的 API 可以帶 `annotator_id`（標註者），沒帶就是匿名。
+- 寫入的 API 可以帶 `annotator_id`（標註者），沒帶就是匿名。啟用登入時，標註者一律是登入的人：沒帶就用本人，帶了別人的 id 回 403。
 - 列表 API 用 `limit`（預設 50，最多 200）和 `offset` 分頁。
+
+## 登入和權限
+
+預設沒有啟用登入，所有 API 都不用登入，和舊版一樣。設了 `ADMIN_PASSWORD` 之後：
+
+- 除了 `/api/health`、`/api/meta` 和下面的登入相關 API，每個 API 都要帶登入的 cookie（`mrc_session`，HttpOnly、SameSite=Lax）。沒帶或過期回 401，角色不夠回 403。舊版的 3 個 API 也一樣。
+- 寫入的請求（POST、PUT、DELETE）如果帶了 `Origin`，要和 `PUBLIC_URL` 或請求的 Host 相同，否則回 403。瀏覽器一定會帶 `Origin`；命令列工具不帶的話不檢查。
+- 同一個帳號 15 分鐘內登入失敗 5 次，之後的登入回 429。
+
+| 權限 | 角色 | API |
+|---|---|---|
+| 公開 | 不用登入 | `/api/health`、`/api/meta`、`/api/auth/*` |
+| 登入 | 標註者、審核者、管理員 | 所有讀取；新增和修改文章、問題、答案；AI 建議；舊版 API |
+| 審核 | 審核者、管理員 | `POST /api/questions/{id}/review`、`GET /api/projects/{id}/export` |
+| 管理 | 管理員 | 新增、修改、刪除專案；`DELETE /api/articles/{id}`；`POST /api/projects/{id}/import`；`/api/users` |
+
+這張表在程式裡只有一份（`src/api/src/auth.rs` 的 `required_level`）。沒列到的寫入一律要登入。
+
+| 方法 | 路徑 | 說明 |
+|---|---|---|
+| GET | `/api/auth/state` | `{"enabled", "user"}`：有沒有啟用登入，和登入的人（`id`、`username`、`role`、`annotator_id`）或 null |
+| POST | `/api/auth/login` | `{"username", "password"}`，成功時設定 cookie 並回傳 `{"user"}`；帳號或密碼錯回 401；沒啟用登入回 404 |
+| POST | `/api/auth/logout` | 刪除這個 session，清掉 cookie（204） |
+| GET／POST | `/api/users` | 列出／新增帳號 `{"username", "password", "role": "annotator" | "reviewer" | "admin"}`。密碼至少 8 個字元；同名（不分大小寫）回 409 |
+| PUT | `/api/users/{id}` | 改 `role`、`disabled`、`password`。停用和重設密碼會登出那個人所有的裝置；不能停用自己或拿掉自己的管理員權限，`ADMIN_USERNAME` 的帳號也不能停用或改角色 |
+
+帳號不能刪除，只能停用。每個帳號連到同名的標註者（`annotator_id`）。啟用登入時，`POST /api/annotators` 回 403，標註者改由新增帳號產生。
 
 ## 系統
 
 | 方法 | 路徑 | 說明 |
 |---|---|---|
 | GET | `/api/health` | 回 `ok` |
-| GET | `/api/meta` | 版本、AI 狀態（`provider`、`model`，或關閉的原因）、支援的匯出格式、上傳大小上限。不含 API key |
+| GET | `/api/meta` | 版本、AI 狀態（`provider`、`model`，或關閉的原因）、有沒有啟用登入、支援的匯出格式、上傳大小上限。不含 API key |
 | GET／POST | `/api/annotators` | 列出／新增標註者 `{"name"}`；同名的直接回傳已存在的那一位 |
 
 ## 專案和文章
@@ -69,7 +96,7 @@ AI 功能沒開時，這些 API 回 503 和原因。
 
 ## 舊版相容
 
-舊版 Flask 平台的 3 個 API 還在，寫入最早建立的專案（沒有專案時自動建立「預設專案」）：
+舊版 Flask 平台的 3 個 API 還在，寫入最早建立的專案（沒有專案時自動建立「預設專案」）。啟用登入時要帶登入的 cookie，寫入的問題和答案記在登入的人身上：
 
 | 方法 | 路徑 | 說明 |
 |---|---|---|
