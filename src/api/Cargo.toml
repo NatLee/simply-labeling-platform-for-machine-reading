@@ -2,6 +2,7 @@
 name = "mrc-label"
 version = "2.0.0"
 edition = "2021"
+license = "MIT"
 description = "Self-hosted labeling platform for machine reading comprehension datasets (SQuAD v1/v2), with AI-assisted suggestions"
 publish = false
 

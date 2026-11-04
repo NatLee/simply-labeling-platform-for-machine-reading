@@ -2,6 +2,7 @@
   "name": "mrc-label-web",
   "private": true,
   "version": "2.0.0",
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.34.9",
   "scripts": {

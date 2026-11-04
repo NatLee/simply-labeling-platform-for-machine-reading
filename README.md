@@ -11,6 +11,7 @@
   <img src="https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-38bdf8" alt="React + Tailwind">
   <img src="https://img.shields.io/badge/dataset-SQuAD%20v1%20%2F%20v2-7c3aed" alt="SQuAD v1 / v2">
   <img src="https://img.shields.io/badge/docker-one%20image-2496ed" alt="Docker">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-16a34a" alt="License: MIT"></a>
 </p>
 
 自架的機器閱讀理解（MRC，讓模型讀文章回答問題）標注平台。在文章上用滑鼠框選答案，平台記下精準的字元位置；一個問題可以有多個答案，也可以標成「無法回答」（SQuAD 2.0）。可以請模型先出題、框好答案，人再接受、修改或拒絕；多位標註者對同一題作答時，平台會算出彼此的一致程度，交給審核者決定要不要放進資料集。資料可以匯出成 SQuAD、Hugging Face 的 JSONL，或給 LLM 用的 RAG 評估和對話微調格式。
@@ -236,6 +237,10 @@ cd src/web && pnpm dev
 ```
 
 CI（GitHub Actions）會跑後端的 fmt、clippy、測試，前端的測試和 build，再 build Docker 映像檔、啟動它，匯入範例資料集再匯出，並確認舊版 API 還在。
+
+## 授權
+
+[MIT](LICENSE)。
 
 ## Contributors
 
