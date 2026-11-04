@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (Rust)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src/api
+      - name: Format
+        run: cargo fmt --check
+      - name: Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Test (fake model servers, no API key needed)
+        run: cargo test --locked
+
+  web:
+    name: Web (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: src/web/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: src/web/pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Test
+        run: pnpm test
+      - name: Type-check and build
+        run: pnpm build
+
+  docker:
+    name: Docker image
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mrc-label:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test
+        run: |
+          docker run -d --name mrc -p 8787:8787 mrc-label:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8787/api/health && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8787/api/meta | tee meta.json
+          grep -q '"enabled":false' meta.json
+          curl -fsS http://127.0.0.1:8787/ | grep -q '<div id="root">'
+          curl -fsS http://127.0.0.1:8787/p/1/annotate | grep -q '<div id="root">'
+          # 匯入範例資料集再匯出，確認整條路通
+          id=$(curl -fsS -H 'content-type: application/json' -d '{"name":"ci"}' http://127.0.0.1:8787/api/projects | sed -n 's/.*"id":\([0-9]*\).*/\1/p')
+          curl -fsS --data-binary @docs/examples/sample-squad-v2.json -H 'content-type: application/octet-stream' \
+            "http://127.0.0.1:8787/api/projects/$id/import" | tee import.json
+          grep -q '"questions_created":6' import.json
+          curl -fsS "http://127.0.0.1:8787/api/projects/$id/export?format=jsonl" | tee export.jsonl
+          test "$(wc -l < export.jsonl)" -eq 6
+          # 舊版 Flask 的 API 還在
+          curl -fsS http://127.0.0.1:8787/article | grep -q article_id
+          docker logs mrc
